@@ -5,6 +5,9 @@ on:
   push:
     branches: [release]
 
+# Keep model server deployment conservative. It syncs only apps/model-server
+# and must not run for pull requests or codex/* branches.
+
 jobs:
   deploy:
     runs-on: ubuntu-latest

@@ -1,4 +1,4 @@
-name = "transformer-3d-explainer-auth-proxy"
+name = "transformer-explainer-auth-proxy"
 main = "src/index.ts"
 compatibility_date = "2026-05-18"
 
