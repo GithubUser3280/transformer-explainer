@@ -1,0 +1,4 @@
+ACCESS_PASSWORD_HASH=replace_me
+COOKIE_SIGNING_SECRET=replace_me
+BACKEND_BASE_URL=http://localhost:7860
+BACKEND_SHARED_SECRET=replace_me

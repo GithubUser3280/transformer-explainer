@@ -1,0 +1,36 @@
+{
+  "name": "transformer-3d-explainer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev:web": "pnpm --filter @transformer-3d-explainer/web dev",
+    "dev:worker": "pnpm --filter @transformer-3d-explainer/worker dev",
+    "test": "pnpm test:ts && (cd apps/model-server && python -c 'import pytest, fastapi' >/dev/null 2>&1 && USE_FAKE_TRACE=true pytest || echo 'Skipping backend pytest: Python backend dependencies are not installed')",
+    "test:ts": "vitest run --config vitest.config.ts",
+    "test:e2e": "pnpm --filter @transformer-3d-explainer/web test:e2e",
+    "typecheck": "pnpm --filter @transformer-3d-explainer/shared-types typecheck && pnpm --filter @transformer-3d-explainer/web typecheck && pnpm --filter @transformer-3d-explainer/worker typecheck",
+    "lint": "eslint . --max-warnings=0",
+    "build": "pnpm --filter @transformer-3d-explainer/shared-types build && pnpm build:web",
+    "build:web": "pnpm --filter @transformer-3d-explainer/web build",
+    "deploy:web": "wrangler pages deploy apps/web/dist --project-name transformer-3d-explainer",
+    "deploy:worker": "pnpm --filter @transformer-3d-explainer/worker deploy"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "@vitejs/plugin-react": "^4.4.1",
+    "@vitest/coverage-v8": "^3.1.4",
+    "eslint": "^9.27.0",
+    "jsdom": "^26.1.0",
+    "playwright": "^1.52.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "vitest": "^3.1.4",
+    "wrangler": "^4.15.2",
+    "typescript-eslint": "^8.32.1",
+    "@eslint/js": "^9.27.0",
+    "@types/node": "^22.10.7"
+  }
+}
