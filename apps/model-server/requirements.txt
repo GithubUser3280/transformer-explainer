@@ -1,0 +1,13 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+orjson
+numpy
+torch==2.5.1+cpu
+transformers>=4.51.0
+safetensors
+accelerate
+pytest
+httpx

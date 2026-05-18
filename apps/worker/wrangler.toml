@@ -1,0 +1,7 @@
+name = "transformer-3d-explainer-auth-proxy"
+main = "src/index.ts"
+compatibility_date = "2026-05-18"
+
+[vars]
+BACKEND_BASE_URL = "https://replace-with-your-hugging-face-space.example"
+# Set ACCESS_PASSWORD_HASH, COOKIE_SIGNING_SECRET, and BACKEND_SHARED_SECRET with `wrangler secret put`.

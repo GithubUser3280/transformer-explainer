@@ -1,0 +1,34 @@
+name: Deploy Model Space
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [release]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Push model server to Hugging Face Space when configured
+        run: |
+          if [ -z "${HF_TOKEN}" ] || [ -z "${HF_SPACE_REPO}" ]; then
+            echo "HF_TOKEN or HF_SPACE_REPO is not configured. Manually deploy apps/model-server to a Docker Space or configure both optional secrets."
+            exit 0
+          fi
+          mkdir -p /tmp/model-space
+          cp -R apps/model-server/. /tmp/model-space/
+          cd /tmp/model-space
+          git init
+          git config user.email "actions@github.com"
+          git config user.name "github-actions"
+          git add .
+          git commit -m "Deploy model server"
+          git branch -M main
+          git remote add space "https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE_REPO}"
+          git push --force space main
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE_REPO: ${{ secrets.HF_SPACE_REPO }}
