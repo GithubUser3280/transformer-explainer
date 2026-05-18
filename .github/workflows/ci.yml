@@ -22,7 +22,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test:ts
-      - run: pnpm build:web
+      - run: pnpm lint
+      - run: pnpm build
 
   python:
     runs-on: ubuntu-latest

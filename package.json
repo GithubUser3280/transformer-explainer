@@ -14,7 +14,7 @@
     "lint": "eslint . --max-warnings=0",
     "build": "pnpm --filter @transformer-3d-explainer/shared-types build && pnpm build:web",
     "build:web": "pnpm --filter @transformer-3d-explainer/web build",
-    "deploy:web": "wrangler pages deploy apps/web/dist --project-name transformer-3d-explainer",
+    "deploy:web:fallback": "wrangler pages deploy apps/web/dist --project-name transformer-explainer",
     "deploy:worker": "pnpm --filter @transformer-3d-explainer/worker deploy"
   },
   "devDependencies": {

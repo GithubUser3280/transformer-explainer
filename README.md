@@ -1,4 +1,4 @@
-# Transformer 3D Explainer
+# Transformer Explainer
 
 A scaffold for a performant, browser-based 3D explainer for modern decoder-only LLM internals. The frontend renders abstract transformer architecture objects from a canonical `TransformerTrace` IR. The backend produces one compact trace per prompt, and the browser animates locally from that trace instead of calling the model server for every visualization step.
 
@@ -9,7 +9,7 @@ User browser
   |
   | static assets + same-origin /api/trace calls
   v
-Cloudflare Pages (Direct Upload from GitHub Actions)
+Cloudflare Pages (Git integration from the release branch)
   |
   | protected /app and /api routes
   v
@@ -112,41 +112,128 @@ Configure in `.dev.vars` locally and Cloudflare secrets in production:
 
 ### GitHub Actions secrets
 
-Required for Cloudflare deploy workflows:
+Normal Cloudflare Pages Git integration does not require Cloudflare deploy secrets in GitHub Actions:
+
+- `CLOUDFLARE_API_TOKEN` is not needed for frontend deployment.
+- `CLOUDFLARE_ACCOUNT_ID` is not needed for frontend deployment.
+
+Required only when using GitHub Actions for Worker deployment:
 
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
 
-Optional for Hugging Face Space deployment workflow:
+Optional/required for Hugging Face Space sync, depending on whether you use the GitHub workflow or deploy the Space manually:
 
 - `HF_TOKEN`
-- `HF_SPACE_REPO` such as `your-org/transformer-3d-explainer-model`
+- `HF_SPACE_REPO` such as `your-org/transformer-explainer-model`
+
+### Production runtime secrets and hosted variables
+
+Cloudflare Worker runtime secrets must be configured in Cloudflare and must not be committed:
+
+- `ACCESS_PASSWORD_HASH`
+- `COOKIE_SIGNING_SECRET`
+- `BACKEND_BASE_URL`
+- `BACKEND_SHARED_SECRET`
+
+Hugging Face Space variables/secrets:
+
+- `MODEL_ID=Qwen/Qwen3-0.6B-Base`
+- `USE_FAKE_TRACE=false`
+- `PRELOAD_MODEL=false`
+- `MAX_PROMPT_TOKENS=48`
+- `MAX_SELECTED_LAYERS=6`
+- `REQUIRE_BACKEND_SECRET=true`
+- `BACKEND_SHARED_SECRET=<same value as Worker BACKEND_SHARED_SECRET>`
 
 ## Deployment
 
-### Cloudflare Pages Direct Upload
+### Cloudflare Pages Git integration
 
-The frontend workflow builds `apps/web` and deploys `apps/web/dist` with:
+The frontend production deployment path is Cloudflare Pages Git integration, not GitHub Actions Direct Upload. Configure the Pages project manually in Cloudflare with these exact settings:
+
+- Create application → Pages → Connect to Git.
+- Select this GitHub repository.
+- Production branch: `release`.
+- Build command: `pnpm install --frozen-lockfile && pnpm build:web`.
+- Build output directory: `apps/web/dist`.
+- Root directory: repository root.
+- Preview branch control:
+  - include `main`
+  - include `preview/*`
+  - exclude `codex/*`
+
+Branch intent:
+
+- `release` is the only production frontend deployment branch.
+- `main` is the integration/testing branch and can have Cloudflare Pages preview deployments.
+- `preview/*` branches are intentional preview deployment branches.
+- `codex/*` branches are for Codex PR work and must not deploy to Cloudflare Pages.
+
+Cloudflare Pages preview deployments are public by default unless protected with Cloudflare Access. Protect preview deployments with Cloudflare Access or keep the app/API password-gated so preview URLs do not expose an unprotected app.
+
+### Optional Cloudflare Pages Direct Upload fallback
+
+Direct Upload is no longer the primary frontend deployment path. Use it only as a manual fallback after building `apps/web/dist`, for example:
 
 ```bash
-npx wrangler pages deploy apps/web/dist --project-name transformer-3d-explainer
+pnpm build:web
+pnpm deploy:web:fallback
 ```
 
-Do not enable Cloudflare Pages automatic Git integration by default. Direct Upload prevents random Codex or preview branch commits from triggering production builds.
+Do not add automatic GitHub Actions push triggers for Pages Direct Upload or for `codex/*` branches.
 
 ### Cloudflare Worker
 
-Deploy the auth/proxy Worker with:
+Recommended deployment posture:
 
-```bash
-pnpm deploy:worker
-```
+- Cloudflare Pages uses Git integration for the frontend.
+- The Worker can use either Cloudflare Workers Git integration or the existing GitHub Actions workflow.
+- If using Workers Git integration, configure the root directory as `apps/worker`, ensure the Worker name in `apps/worker/wrangler.toml` matches the Worker name configured in Cloudflare, set production deployment to the `release` branch, and do not enable automatic deploys from `codex/*` branches.
+- If using GitHub Actions for Worker deployment, keep `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` configured as GitHub secrets. The existing `deploy-worker.yml` workflow deploys only from `workflow_dispatch` or a push to `release`.
 
 Set Worker secrets with `wrangler secret put ACCESS_PASSWORD_HASH`, `COOKIE_SIGNING_SECRET`, and `BACKEND_SHARED_SECRET`. Set `BACKEND_BASE_URL` to the Hugging Face Space URL.
 
 ### Hugging Face Docker Space
 
-Create a Docker Space on Hugging Face CPU Basic and deploy only `apps/model-server` contents. The conservative GitHub workflow can push to a separate Space repo when `HF_TOKEN` and `HF_SPACE_REPO` are configured. Otherwise, manually push the model-server directory to the Space repository.
+Create a Docker Space on Hugging Face CPU Basic and deploy only `apps/model-server` contents. The conservative GitHub workflow can push to a separate Space repo on `workflow_dispatch` or a push to `release` when `HF_TOKEN` and `HF_SPACE_REPO` are configured. It does not deploy on PRs. Otherwise, manually push the model-server directory to the Space repository.
+
+## Cloudflare deployment checklist
+
+### Frontend Pages
+
+- [ ] Cloudflare Pages project created through Connect to Git.
+- [ ] Production branch set to `release`.
+- [ ] Preview branch controls set to `main` and `preview/*` only.
+- [ ] `codex/*` excluded.
+- [ ] Build command is `pnpm install --frozen-lockfile && pnpm build:web`.
+- [ ] Output directory is `apps/web/dist`.
+- [ ] Environment variables are set if needed.
+- [ ] Preview deployments are either Access-protected or password-gated.
+
+### Worker
+
+- [ ] Worker secrets configured.
+- [ ] `/health` works.
+- [ ] `/login` works.
+- [ ] `/api/*` rejects requests without session cookie.
+- [ ] Proxied `/api/trace` attaches `X-Backend-Shared-Secret`.
+
+### Backend
+
+- [ ] Hugging Face Docker Space deployed.
+- [ ] `/health` works.
+- [ ] Direct backend request without `X-Backend-Shared-Secret` fails when `REQUIRE_BACKEND_SECRET=true`.
+- [ ] Worker-proxied request succeeds.
+
+## Branch behavior
+
+| Branch | CI | Frontend deploy | Worker deploy | Model server deploy |
+|---|---|---|---|---|
+| codex/* | yes on PR | no | no | no |
+| main | yes | preview only | no | no |
+| preview/* | optional | preview only | no | no |
+| release | yes | production | production if configured | model sync/deploy |
 
 ## Security model
 
@@ -166,22 +253,17 @@ Create a Docker Space on Hugging Face CPU Basic and deploy only `apps/model-serv
 - The renderer consumes compact summaries, heatmaps, and sparse top-k attention links, never full tensors.
 - Frontend animation should avoid React state updates inside `useFrame`.
 
-## Branch and deploy workflow
-
-- `main`: integration branch; tests only.
-- `codex/*`: Codex work branches; tests only.
-- `preview/*`: optional manual preview branches; no automatic production deployment unless added later.
-- `release`: production deployment branch.
-- Production deploys run only by `workflow_dispatch` or pushes to `release`.
-
 ## Testing commands
 
 ```bash
+pnpm install --frozen-lockfile
 pnpm typecheck
 pnpm test:ts
 pnpm build:web
+pnpm build
+pnpm lint
+cd apps/model-server && USE_FAKE_TRACE=true pytest -q
 pnpm test:e2e
-cd apps/model-server && USE_FAKE_TRACE=true pytest
 ```
 
 The root `pnpm test` runs TS tests and attempts backend pytest only when a Python pytest environment is available.

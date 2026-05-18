@@ -5,6 +5,9 @@ on:
   push:
     branches: [release]
 
+# Frontend Pages deploys are handled by Cloudflare Git integration.
+# Keep this Worker deployment conservative; do not add codex/* push triggers.
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
