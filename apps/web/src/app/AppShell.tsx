@@ -9,38 +9,38 @@ import { createFakeTrace } from '../transformer-ir/fakeTrace';
 import { AuthPanel } from '../components/AuthPanel';
 
 const TransformerScene = lazy(() => import('../scenes/TransformerScene').then((module) => ({ default: module.TransformerScene })));
-const defaultPrompt = 'The cat sat';
+const defaultPrompt = 'The cat sat on the';
 
 export function AppShell() {
   const [prompt, setPrompt] = useState(defaultPrompt);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showAuthPanel, setShowAuthPanel] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  const { trace, setTrace, selectedTokenIndex, selectedLayerIndex, selectedHeadIndex, setSelectedTokenIndex, setSelectedLayerIndex, setSelectedHeadIndex } = useTraceStore();
+  const { trace, setTrace, selectedTokenIndex, selectedLayerIndex, selectedHeadIndex, setSelectedTokenIndex, setSelectedLayerIndex, setSelectedHeadIndex, isLoading, setLoading, error, setError, usingFixtureFallback, setUsingFixtureFallback } = useTraceStore();
 
-  const traceMutation = useMutation<TransformerTrace, Error, TraceRequest>({ mutationFn: (req) => requestTransformerTrace(req), onSuccess: setTrace });
+  const traceMutation = useMutation<TransformerTrace, Error, TraceRequest>({
+    mutationFn: (req) => requestTransformerTrace(req),
+    onMutate: () => { setLoading(true); setError(undefined); setUsingFixtureFallback(false); },
+    onSuccess: (t) => { setTrace(t); setLoading(false); },
+    onError: (e) => { setLoading(false); if (e instanceof AuthRequiredError) { setShowAuthPanel(true); return; } setError(e.message); const fallback = createFakeTrace(prompt); fallback.warnings = [...(fallback.warnings ?? []), 'Showing fixture fallback because API request failed']; setTrace(fallback); setUsingFixtureFallback(true); }
+  });
 
   useEffect(() => { if (!trace) setTrace(createFakeTrace(defaultPrompt)); }, [trace, setTrace]);
 
   return <main className='app-shell'>
-    <div className='visual-panel'>{trace ? <Suspense fallback={<div className='empty-scene'>Loading 3D renderer…</div>}><TransformerScene trace={trace} onTokenSelect={setSelectedTokenIndex} /></Suspense> : null}</div>
+    <div className='visual-panel'>{trace ? <Suspense fallback={<div className='empty-scene'>Loading 3D renderer…</div>}><TransformerScene trace={trace} selectedTokenIndex={selectedTokenIndex} selectedLayerIndex={selectedLayerIndex} selectedHeadIndex={selectedHeadIndex} onSelectToken={setSelectedTokenIndex} onSelectLayer={setSelectedLayerIndex} onSelectHead={setSelectedHeadIndex} /></Suspense> : null}</div>
     <section className='controls-panel overlay-panel'>
-      <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={4} />
+      <label htmlFor='prompt'>Prompt</label><textarea id='prompt' value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={4} />
       <div className='button-row'>
         <button onClick={() => traceMutation.mutate({ prompt, maxGeneratedTokens: 1, topK: 10 })}>Generate trace</button>
-        <button className='secondary' onClick={() => setTrace(createFakeTrace(prompt))}>Use fake trace</button>
+        <button className='secondary' onClick={() => { setTrace(createFakeTrace(prompt)); setUsingFixtureFallback(true); }}>Use fixture trace</button>
         <button className='secondary' onClick={() => setShowAuthPanel(true)} disabled={isAuthenticated}>Login</button>
         <button className='secondary' onClick={() => logout()} disabled={!isAuthenticated}>Logout</button>
       </div>
-      {traceMutation.isPending ? <LoadingPanel /> : null}
-      {traceMutation.isError && !(traceMutation.error instanceof AuthRequiredError) ? <ErrorPanel message={traceMutation.error.message} /> : null}
+      {isLoading ? <LoadingPanel /> : null}
+      {error ? <ErrorPanel message={error} /> : null}
+      {usingFixtureFallback ? <p className='warning'>Fixture fallback active.</p> : null}
     </section>
-    <aside className='side-panel overlay-panel'><h2>Selection</h2><p>Token {selectedTokenIndex} / Layer {selectedLayerIndex} / Head {selectedHeadIndex}</p>
-      <button onClick={() => setSelectedLayerIndex(Math.max(0, selectedLayerIndex - 1))}>Prev Layer</button>
-      <button onClick={() => setSelectedLayerIndex(selectedLayerIndex + 1)}>Next Layer</button>
-      <button onClick={() => setSelectedHeadIndex(Math.max(0, selectedHeadIndex - 1))}>Prev Head</button>
-      <button onClick={() => setSelectedHeadIndex(selectedHeadIndex + 1)}>Next Head</button>
-    </aside>
     <AuthPanel open={showAuthPanel} isLoading={false} errorMessage={authError} onSubmit={(password) => login(password).then(() => setIsAuthenticated(true)).catch((e: Error) => setAuthError(e.message))} onClose={() => setShowAuthPanel(false)} />
   </main>;
 }
