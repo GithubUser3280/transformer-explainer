@@ -1,3 +1,13 @@
+---
+title: Transformer Explainer Backend
+emoji: 🧠
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Model Server
 
 FastAPI service that returns compact, canonical `TransformerTrace` JSON for the 3D frontend. Local defaults use fake traces so development does not download a model.
