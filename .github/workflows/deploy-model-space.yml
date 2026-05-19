@@ -21,13 +21,21 @@ jobs:
             echo "HF_TOKEN or HF_SPACE_REPO is not configured. Manually deploy apps/model-server to a Docker Space or configure both optional secrets."
             exit 0
           fi
+          rm -rf /tmp/model-space
           mkdir -p /tmp/model-space
-          cp -R apps/model-server/. /tmp/model-space/
+          cp apps/model-server/Dockerfile /tmp/model-space/Dockerfile
+          cp apps/model-server/requirements.txt /tmp/model-space/requirements.txt
+          cp apps/model-server/README.md /tmp/model-space/README.md
+          cp -R apps/model-server/app /tmp/model-space/app
           cd /tmp/model-space
+          test -f Dockerfile
+          test -f requirements.txt
+          test -f README.md
+          test -d app
           git init
           git config user.email "actions@github.com"
           git config user.name "github-actions"
-          git add .
+          git add Dockerfile requirements.txt README.md app
           git commit -m "Deploy model server"
           git branch -M main
           git remote add space "https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE_REPO}"
