@@ -10,7 +10,7 @@
     "test": "pnpm test:ts && (cd apps/model-server && python -c 'import pytest, fastapi' >/dev/null 2>&1 && USE_FAKE_TRACE=true pytest || echo 'Skipping backend pytest: Python backend dependencies are not installed')",
     "test:ts": "vitest run --config vitest.config.ts",
     "test:e2e": "pnpm --filter @transformer-3d-explainer/web test:e2e",
-    "typecheck": "pnpm --filter @transformer-3d-explainer/shared-types typecheck && pnpm --filter @transformer-3d-explainer/web typecheck && pnpm --filter @transformer-3d-explainer/worker typecheck",
+    "typecheck": "pnpm --filter @transformer-3d-explainer/shared-types typecheck && pnpm --filter @transformer-3d-explainer/web typecheck && pnpm --filter @transformer-3d-explainer/worker typecheck && tsc -p tsconfig.functions.json --noEmit",
     "lint": "eslint . --max-warnings=0",
     "build": "pnpm --filter @transformer-3d-explainer/shared-types build && pnpm build:web",
     "build:web": "pnpm --filter @transformer-3d-explainer/web build",

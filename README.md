@@ -201,7 +201,7 @@ Create a Docker Space on Hugging Face CPU Basic and deploy only `apps/model-serv
 
 ### Cloudflare Pages Functions routing (production)
 
-This repo now uses **Cloudflare Pages Functions in `apps/web/functions`** for production auth/proxy routing when you do not have a custom domain:
+This repo now uses **Cloudflare Pages Functions in `/functions` (repository root)** for production auth/proxy routing when you do not have a custom domain:
 
 - `/api/*` → requires signed session cookie, proxies to `BACKEND_BASE_URL`, injects `X-Backend-Shared-Secret`.
 - `/login` (POST) → verifies password hash, sets signed cookie.
@@ -209,6 +209,11 @@ This repo now uses **Cloudflare Pages Functions in `apps/web/functions`** for pr
 - `/app/*` → requires signed session cookie and returns `X-Robots-Tag: noindex, nofollow`.
 
 This removes ambiguity where same-origin `/api/trace` could be treated as static Pages content and return `405 Method Not Allowed`.
+
+
+Troubleshooting:
+
+- If `POST /api/trace` returns `405 Method Not Allowed`, Cloudflare Pages likely did not deploy Functions from the repository-root `/functions` directory, or the deployment is serving an older commit. Verify the latest production deployment commit in the Cloudflare Pages dashboard and redeploy if needed.
 
 ## Cloudflare deployment checklist
 
