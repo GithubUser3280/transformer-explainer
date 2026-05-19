@@ -91,3 +91,26 @@ dd { margin: 0 0 8px; color: #f8fafc; }
     height: 60vh;
   }
 }
+
+.auth-modal {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(420px, calc(100vw - 32px));
+  padding: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 16px;
+  background: rgba(2, 6, 23, 0.95);
+}
+
+.auth-form label { display: block; margin: 10px 0 8px; font-weight: 700; }
+.auth-form input {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid #334155;
+  background: #020617;
+  color: #e2e8f0;
+  padding: 10px;
+}
