@@ -34,7 +34,17 @@ export function AppShell() {
 
   return (
     <main className="app-shell">
-      <section className="landing-panel">
+      <div className="visual-panel">
+        {trace ? (
+          <Suspense fallback={<div className="empty-scene">Loading 3D renderer…</div>}>
+            <TransformerScene trace={trace} onTokenSelect={(tokenIndex) => setSelection({ tokenIndex })} />
+          </Suspense>
+        ) : (
+          <div className="empty-scene" data-testid="scene-shell">Click “Use fake trace” to load the local scene.</div>
+        )}
+      </div>
+
+      <section className="landing-panel overlay-panel">
         <p className="eyebrow">Model-agnostic TransformerTrace IR</p>
         <h1>Explore decoder-only LLM internals as compact 3D traces.</h1>
         <p>
@@ -42,50 +52,38 @@ export function AppShell() {
         </p>
       </section>
 
-      <section className="workspace">
-        <div className="controls-panel">
-          <label htmlFor="prompt">Prompt</label>
-          <textarea id="prompt" value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={4} />
-          <div className="button-row">
-            <button type="button" onClick={() => mutation.mutate({ prompt })} disabled={mutation.isPending}>
-              Generate trace
-            </button>
-            <button type="button" className="secondary" onClick={loadFakeTrace}>
-              Use fake trace
-            </button>
-          </div>
-          {mutation.isPending ? <LoadingPanel /> : null}
-          {mutation.isError ? <ErrorPanel message={mutation.error.message} /> : null}
-          <p className="hint">Real traces call same-origin <code>/api/trace</code>; fake traces never download a model.</p>
+      <section className="controls-panel overlay-panel" aria-label="Trace controls">
+        <label htmlFor="prompt">Prompt</label>
+        <textarea id="prompt" value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={4} />
+        <div className="button-row">
+          <button type="button" onClick={() => mutation.mutate({ prompt })} disabled={mutation.isPending}>
+            Generate trace
+          </button>
+          <button type="button" className="secondary" onClick={loadFakeTrace}>
+            Use fake trace
+          </button>
         </div>
-
-        <div className="visual-panel">
-          {trace ? (
-            <Suspense fallback={<div className="empty-scene">Loading 3D renderer…</div>}>
-              <TransformerScene trace={trace} onTokenSelect={(tokenIndex) => setSelection({ tokenIndex })} />
-            </Suspense>
-          ) : (
-            <div className="empty-scene" data-testid="scene-shell">Click “Use fake trace” to load the local scene.</div>
-          )}
-        </div>
-
-        <aside className="side-panel" aria-label="Trace selection details">
-          <h2>Selection</h2>
-          <dl>
-            <dt>Model</dt>
-            <dd>{trace?.modelMetadata.modelId ?? 'No trace loaded'}</dd>
-            <dt>Token</dt>
-            <dd>{selectedToken ? `${selectedToken.tokenIndex}: ${selectedToken.text}` : 'None'}</dd>
-            <dt>Layer</dt>
-            <dd>{selectedLayer ? `${selectedLayer.layerIndex} · ${selectedLayer.displayName}` : 'None'}</dd>
-            <dt>Head</dt>
-            <dd>{selection.headIndex ?? 'Auto-selected summary'}</dd>
-            <dt>Operation</dt>
-            <dd>{operation ? `${operation.displayName} (${operation.kind})` : 'Choose a layer operation later'}</dd>
-          </dl>
-          {trace?.warnings.length ? <p className="warning">{trace.warnings[0]}</p> : null}
-        </aside>
+        {mutation.isPending ? <LoadingPanel /> : null}
+        {mutation.isError ? <ErrorPanel message={mutation.error.message} /> : null}
+        <p className="hint">Real traces call same-origin <code>/api/trace</code>; fake traces never download a model.</p>
       </section>
+
+      <aside className="side-panel overlay-panel" aria-label="Trace selection details">
+        <h2>Selection</h2>
+        <dl>
+          <dt>Model</dt>
+          <dd>{trace?.modelMetadata.modelId ?? 'No trace loaded'}</dd>
+          <dt>Token</dt>
+          <dd>{selectedToken ? `${selectedToken.tokenIndex}: ${selectedToken.text}` : 'None'}</dd>
+          <dt>Layer</dt>
+          <dd>{selectedLayer ? `${selectedLayer.layerIndex} · ${selectedLayer.displayName}` : 'None'}</dd>
+          <dt>Head</dt>
+          <dd>{selection.headIndex ?? 'Auto-selected summary'}</dd>
+          <dt>Operation</dt>
+          <dd>{operation ? `${operation.displayName} (${operation.kind})` : 'Choose a layer operation later'}</dd>
+        </dl>
+        {trace?.warnings.length ? <p className="warning">{trace.warnings[0]}</p> : null}
+      </aside>
     </main>
   );
 }
