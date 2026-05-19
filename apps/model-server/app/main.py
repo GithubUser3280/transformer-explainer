@@ -38,7 +38,7 @@ def create_trace(
     settings: Settings = Depends(get_settings),
     _: None = Depends(require_shared_secret),
 ) -> dict:
-    max_prompt_tokens = min(request.max_prompt_tokens or settings.max_prompt_tokens, settings.max_prompt_tokens)
+    model_name = request.modelName or settings.model_id
     if settings.use_fake_trace:
-        return build_fake_trace(request.prompt, max_prompt_tokens=max_prompt_tokens)
-    return build_qwen3_trace(request.prompt, settings, requested_max_prompt_tokens=max_prompt_tokens, requested_layer_indices=request.selected_layer_indices)
+        return build_fake_trace(request.prompt)
+    return build_qwen3_trace(request.prompt, settings, model_name=model_name, top_k=request.topK or 10)
