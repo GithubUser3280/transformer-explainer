@@ -11,9 +11,9 @@ User browser
   v
 Cloudflare Pages (Git integration from the release branch)
   |
-  | protected /app and /api routes
+  | Pages Functions handle /api/*, /login, /logout, and protected /app/*
   v
-Cloudflare Worker auth/proxy
+Same Pages project auth/proxy layer
   |  - verifies signed HttpOnly session cookie
   |  - attaches X-Backend-Shared-Secret
   v
@@ -197,6 +197,23 @@ Set Worker secrets with `wrangler secret put ACCESS_PASSWORD_HASH`, `COOKIE_SIGN
 ### Hugging Face Docker Space
 
 Create a Docker Space on Hugging Face CPU Basic and deploy only `apps/model-server` contents. The conservative GitHub workflow can push to a separate Space repo on `workflow_dispatch` or a push to `release` when `HF_TOKEN` and `HF_SPACE_REPO` are configured. It does not deploy on PRs. Otherwise, manually push the model-server directory to the Space repository.
+
+
+### Cloudflare Pages Functions routing (production)
+
+This repo now uses **Cloudflare Pages Functions in `/functions` (repository root)** for production auth/proxy routing when you do not have a custom domain:
+
+- `/api/*` → requires signed session cookie, proxies to `BACKEND_BASE_URL`, injects `X-Backend-Shared-Secret`.
+- `/login` (POST) → verifies password hash, sets signed cookie.
+- `/logout` (POST) → clears signed cookie.
+- `/app/*` → requires signed session cookie and returns `X-Robots-Tag: noindex, nofollow`.
+
+This removes ambiguity where same-origin `/api/trace` could be treated as static Pages content and return `405 Method Not Allowed`.
+
+
+Troubleshooting:
+
+- If `POST /api/trace` returns `405 Method Not Allowed`, Cloudflare Pages likely did not deploy Functions from the repository-root `/functions` directory, or the deployment is serving an older commit. Verify the latest production deployment commit in the Cloudflare Pages dashboard and redeploy if needed.
 
 ## Cloudflare deployment checklist
 

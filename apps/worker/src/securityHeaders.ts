@@ -10,6 +10,12 @@ export function withSecurityHeaders(response: Response): Response {
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
+export function withRobotsNoIndex(response: Response): Response {
+  const headers = new Headers(response.headers);
+  headers.set('X-Robots-Tag', 'noindex, nofollow');
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 export function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
   return withSecurityHeaders(
     new Response(JSON.stringify(body), {
