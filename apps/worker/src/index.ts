@@ -1,7 +1,7 @@
 import { type WorkerEnv, verifyPassword } from './auth';
 import { createExpiredSessionCookie, createSessionCookie, hasValidSessionCookie } from './cookies';
 import { proxyApiRequest } from './proxy';
-import { jsonResponse, withSecurityHeaders } from './securityHeaders';
+import { jsonResponse, withRobotsNoIndex, withSecurityHeaders } from './securityHeaders';
 
 export default {
   async fetch(request: Request, env: WorkerEnv): Promise<Response> {
@@ -29,12 +29,12 @@ export default {
 
     const hasSession = await hasValidSessionCookie(request, env.COOKIE_SIGNING_SECRET);
     if (url.pathname.startsWith('/api/')) {
-      if (!hasSession) return jsonResponse({ error: 'Authentication required' }, { status: 401 });
-      return withSecurityHeaders(await proxyApiRequest(request, env));
+      if (!hasSession) return withRobotsNoIndex(jsonResponse({ error: 'Authentication required' }, { status: 401 }));
+      return withRobotsNoIndex(withSecurityHeaders(await proxyApiRequest(request, env)));
     }
 
     if (url.pathname.startsWith('/app') && !hasSession) {
-      return jsonResponse({ error: 'Authentication required' }, { status: 401 });
+      return withRobotsNoIndex(jsonResponse({ error: 'Authentication required' }, { status: 401 }));
     }
 
     return jsonResponse({ error: 'Not found' }, { status: 404 });
