@@ -32,6 +32,8 @@ Qwen/Qwen3-0.6B is the primary real model target because it is modern enough to 
 
 The frontend is a static Vite/React/Three.js app deployable to Cloudflare Pages. It only knows about same-origin `/api/trace`; it never embeds a Hugging Face Space URL. The model server is dynamic and computes a compact trace once per prompt. The scene consumes only the canonical `TransformerTrace` IR so Qwen, Gemma, Mistral, or later model tracers can be added without rewriting the renderer.
 
+The frontend now includes a password login modal. Fake traces remain available without authentication, while real trace generation requires a successful `/login` call and session cookie.
+
 ## Local setup
 
 Install JavaScript dependencies:
@@ -214,6 +216,9 @@ This removes ambiguity where same-origin `/api/trace` could be treated as static
 Troubleshooting:
 
 - If `POST /api/trace` returns `405 Method Not Allowed`, Cloudflare Pages likely did not deploy Functions from the repository-root `/functions` directory, or the deployment is serving an older commit. Verify the latest production deployment commit in the Cloudflare Pages dashboard and redeploy if needed.
+
+- If `POST /api/trace` returns `401 Unauthorized`, auth is active and the frontend should prompt for the shared password modal before retrying real trace generation.
+- Users must log in through the UI before real trace generation succeeds; fake trace generation remains available when logged out.
 
 ## Cloudflare deployment checklist
 

@@ -1,11 +1,12 @@
 import { useMutation } from '@tanstack/react-query';
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { requestTransformerTrace } from '../api/traceApiClient';
+import { AuthRequiredError, login, logout, requestTransformerTrace } from '../api/traceApiClient';
 import type { TraceRequest, TransformerTrace } from '../transformer-ir/traceTypes';
 import { ErrorPanel } from '../components/ErrorPanel';
 import { LoadingPanel } from '../components/LoadingPanel';
 import { useTraceStore } from '../state/useTraceStore';
 import { createFakeTrace } from '../transformer-ir/fakeTrace';
+import { AuthPanel } from '../components/AuthPanel';
 
 const TransformerScene = lazy(() => import('../scenes/TransformerScene').then((module) => ({ default: module.TransformerScene })));
 
@@ -13,11 +14,54 @@ const defaultPrompt = 'A transformer routes token information through attention 
 
 export function AppShell() {
   const [prompt, setPrompt] = useState(defaultPrompt);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showAuthPanel, setShowAuthPanel] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [pendingTraceRequest, setPendingTraceRequest] = useState<TraceRequest | null>(null);
   const { trace, selection, setTrace, setSelection, selectedOperation } = useTraceStore();
-  const mutation = useMutation<TransformerTrace, Error, TraceRequest>({
+  const traceMutation = useMutation<TransformerTrace, Error, TraceRequest>({
     mutationFn: (traceRequest) => requestTransformerTrace(traceRequest),
-    onSuccess: setTrace
+    onSuccess: (nextTrace) => {
+      setTrace(nextTrace);
+      setPendingTraceRequest(null);
+      setShowAuthPanel(false);
+      setAuthError(null);
+      setIsAuthenticated(true);
+    },
+    onError: (error, traceRequest) => {
+      if (error instanceof AuthRequiredError) {
+        setPendingTraceRequest(traceRequest);
+        setShowAuthPanel(true);
+      }
+    }
   });
+
+  const loginMutation = useMutation({
+    mutationFn: (password: string) => login(password),
+    onSuccess: async () => {
+      setAuthError(null);
+      setIsAuthenticated(true);
+      if (pendingTraceRequest) {
+        await traceMutation.mutateAsync(pendingTraceRequest);
+        return;
+      }
+      setShowAuthPanel(false);
+    },
+    onError: (error: Error) => {
+      setAuthError(error.message);
+    }
+  });
+
+  const logoutMutation = useMutation({
+    mutationFn: () => logout(),
+    onSuccess: () => {
+      setIsAuthenticated(false);
+      setShowAuthPanel(false);
+      setAuthError(null);
+      setPendingTraceRequest(null);
+    }
+  });
+
   const operation = selectedOperation?.();
   const selectedToken = trace?.tokens.find((token) => token.tokenIndex === selection.tokenIndex);
   const selectedLayer = trace?.layers.find((layer) => layer.layerIndex === selection.layerIndex);
@@ -30,6 +74,10 @@ export function AppShell() {
 
   function loadFakeTrace() {
     setTrace(createFakeTrace(prompt));
+  }
+
+  function handleGenerateTrace() {
+    traceMutation.mutate({ prompt });
   }
 
   return (
@@ -56,15 +104,21 @@ export function AppShell() {
         <label htmlFor="prompt">Prompt</label>
         <textarea id="prompt" value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={4} />
         <div className="button-row">
-          <button type="button" onClick={() => mutation.mutate({ prompt })} disabled={mutation.isPending}>
+          <button type="button" onClick={handleGenerateTrace} disabled={traceMutation.isPending || loginMutation.isPending}>
             Generate trace
           </button>
           <button type="button" className="secondary" onClick={loadFakeTrace}>
             Use fake trace
           </button>
+          <button type="button" className="secondary" onClick={() => setShowAuthPanel(true)} disabled={isAuthenticated || loginMutation.isPending}>
+            Login
+          </button>
+          <button type="button" className="secondary" onClick={() => logoutMutation.mutate()} disabled={!isAuthenticated || logoutMutation.isPending}>
+            {logoutMutation.isPending ? 'Logging out…' : 'Logout'}
+          </button>
         </div>
-        {mutation.isPending ? <LoadingPanel /> : null}
-        {mutation.isError ? <ErrorPanel message={mutation.error.message} /> : null}
+        {traceMutation.isPending ? <LoadingPanel /> : null}
+        {traceMutation.isError && !(traceMutation.error instanceof AuthRequiredError) ? <ErrorPanel message={traceMutation.error.message} /> : null}
         <p className="hint">Real traces call same-origin <code>/api/trace</code>; fake traces never download a model.</p>
       </section>
 
@@ -84,6 +138,17 @@ export function AppShell() {
         </dl>
         {trace?.warnings.length ? <p className="warning">{trace.warnings[0]}</p> : null}
       </aside>
+
+      <AuthPanel
+        open={showAuthPanel}
+        isLoading={loginMutation.isPending}
+        errorMessage={authError}
+        onSubmit={(password) => loginMutation.mutate(password)}
+        onClose={() => {
+          setShowAuthPanel(false);
+          setAuthError(null);
+        }}
+      />
     </main>
   );
 }
