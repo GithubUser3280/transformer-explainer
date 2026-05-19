@@ -1,1 +1,49 @@
-{"schemaVersion":"1.0","model":{"name":"fixture","architecture":"gpt2","numLayers":2,"numHeads":2,"hiddenSize":32,"vocabSize":50000},"input":{"prompt":"The cat sat","tokens":[{"index":0,"id":464,"text":"The"},{"index":1,"id":3797,"text":"cat"},{"index":2,"id":3332,"text":"sat"}]},"embedding":{"tokenEmbeddingPreview":[{"tokenIndex":0,"values":[0.1,0.2]},{"tokenIndex":1,"values":[0.1,0.2]},{"tokenIndex":2,"values":[0.1,0.2]}],"positionEmbeddingPreview":[{"tokenIndex":0,"values":[0.1,0.2]},{"tokenIndex":1,"values":[0.1,0.2]},{"tokenIndex":2,"values":[0.1,0.2]}],"previewDimensions":2},"layers":[{"layerIndex":0,"residualStream":{"tokenNormsBefore":[1,1,1],"tokenNormsAfterAttention":[1,1,1],"tokenNormsAfterMlp":[1,1,1]},"attention":{"heads":[{"headIndex":0,"weights":[[1,0,0],[0.5,0.5,0],[0.3,0.3,0.4]],"queryPreview":null,"keyPreview":null,"valuePreview":null}]},"hiddenStatePreview":[{"tokenIndex":0,"values":[0.1,0.2]},{"tokenIndex":1,"values":[0.1,0.2]},{"tokenIndex":2,"values":[0.1,0.2]}]}],"output":{"nextTokenTopK":[{"tokenId":13,"text":".","logit":1.2,"probability":0.4}]},"limits":{"maxSequenceTokens":32,"previewDimensions":2,"returnedLayers":1,"returnedHeadsPerLayer":1}}
+{
+  "traceId": "legacy-fixture-1",
+  "createdAtIso": "2026-05-19T00:00:00Z",
+  "modelMetadata": {
+    "modelId": "Qwen/Qwen3-0.6B-Base",
+    "architectureFamily": "decoder-only-transformer",
+    "layerCount": 17,
+    "hiddenSize": 1024,
+    "queryHeadCount": 16
+  },
+  "prompt": {
+    "rawText": "The cat sat",
+    "tokenCount": 3,
+    "maxPromptTokens": 32,
+    "truncated": false
+  },
+  "tokens": [
+    { "tokenIndex": 0, "tokenId": 464, "text": "The" },
+    { "tokenIndex": 1, "tokenId": 3797, "text": "Ġcat" },
+    { "tokenIndex": 2, "tokenId": 3332, "text": "Ġsat" }
+  ],
+  "layers": [
+    {
+      "layerIndex": 0,
+      "operations": [
+        {
+          "kind": "attention",
+          "compactHeatmap": { "width": 3, "height": 3, "values": [1,0,0,0.4,0.6,0,0.2,0.3,0.5] }
+        }
+      ]
+    },
+    {
+      "layerIndex": 4,
+      "operations": [
+        {
+          "kind": "attention",
+          "compactHeatmap": { "width": 3, "height": 3, "values": [1,0,0,0.5,0.5,0,0.3,0.2,0.5] }
+        }
+      ]
+    }
+  ],
+  "logitsSummary": {
+    "topPredictions": [
+      { "tokenId": 13, "text": ".", "probability": 0.4 },
+      { "tokenId": 290, "text": " on", "probability": 0.2 }
+    ]
+  },
+  "warnings": ["Legacy fixture trace shape"]
+}

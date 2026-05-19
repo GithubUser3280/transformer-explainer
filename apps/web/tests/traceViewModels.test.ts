@@ -1,38 +1,36 @@
-import type { TransformerTrace } from '../src/transformer-ir/traceTypes';
 import fixture from '../src/fixtures/trace.the-cat-sat.json';
 import { describe, expect, it } from 'vitest';
 import { buildLayerViewModelsFromTrace, buildOutputLogitViewModelsFromTrace, buildTokenViewModelsFromTrace, getSelectedAttentionHeadFromTrace, getSelectedLayerFromTrace } from '../src/scenes/traceViewModels';
+import { validateTransformerTrace } from '../src/transformer-ir/traceValidation';
 
-const typedFixture = fixture as unknown as TransformerTrace;
+const trace = validateTransformerTrace(fixture);
 
 describe('trace view models', () => {
   it('preserves sampled layer indices', () => {
-    const vm = buildLayerViewModelsFromTrace(typedFixture, typedFixture.layers[0].layerIndex);
-    expect(vm.map((x) => x.layerIndex)).toEqual(typedFixture.layers.map((l) => l.layerIndex));
+    const vm = buildLayerViewModelsFromTrace(trace, trace.layers[0].layerIndex);
+    expect(vm.map((x) => x.layerIndex)).toEqual(trace.layers.map((l) => l.layerIndex));
   });
 
   it('selects attention head from selected layer', () => {
-    const head = getSelectedAttentionHeadFromTrace(typedFixture, typedFixture.layers[0].layerIndex, typedFixture.layers[0].attention.heads[0].headIndex);
-    expect(head?.weights.length).toBe(typedFixture.input.tokens.length);
+    const head = getSelectedAttentionHeadFromTrace(trace, trace.layers[0].layerIndex, trace.layers[0].attention.heads[0].headIndex);
+    expect(head?.weights.length).toBe(trace.input.tokens.length);
   });
 
   it('builds logits vm from real top-k', () => {
-    const logits = buildOutputLogitViewModelsFromTrace(typedFixture);
-    expect(logits[0].tokenId).toBe(typedFixture.output.nextTokenTopK[0].tokenId);
+    const logits = buildOutputLogitViewModelsFromTrace(trace);
+    expect(logits[0].tokenId).toBe(trace.output.nextTokenTopK[0].tokenId);
   });
 
   it('handles missing attention as unavailable without crash', () => {
-    const copy = structuredClone(typedFixture);
+    const copy = structuredClone(trace);
     // @ts-expect-error test missing
     copy.layers[0].attention = undefined;
-    const layer = getSelectedLayerFromTrace(copy, copy.layers[0].layerIndex);
-    expect(layer).toBeTruthy();
     const head = getSelectedAttentionHeadFromTrace(copy, copy.layers[0].layerIndex, 0);
     expect(head).toBeUndefined();
   });
 
   it('token vm handles whitespace markers', () => {
-    const copy = structuredClone(typedFixture);
+    const copy = structuredClone(trace);
     copy.input.tokens[0].text = 'ĠThe';
     const tokens = buildTokenViewModelsFromTrace(copy, 0);
     expect(tokens[0].label.includes('␠')).toBe(true);

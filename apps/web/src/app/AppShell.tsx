@@ -22,7 +22,7 @@ export function AppShell() {
     mutationFn: (req) => requestTransformerTrace(req),
     onMutate: () => { setLoading(true); setError(undefined); setUsingFixtureFallback(false); },
     onSuccess: (t) => { setTrace(t); setLoading(false); },
-    onError: (e) => { setLoading(false); if (e instanceof AuthRequiredError) { setShowAuthPanel(true); return; } setError(e.message); const fallback = createFakeTrace(prompt); fallback.warnings = [...(fallback.warnings ?? []), 'Showing fixture fallback because API request failed']; setTrace(fallback); setUsingFixtureFallback(true); }
+    onError: (e) => { setLoading(false); if (e instanceof AuthRequiredError) { setShowAuthPanel(true); return; } console.error('Trace fetch/validation failed; using fixture fallback.', e); setError(e.message); const fallback = createFakeTrace(prompt); fallback.warnings = [...(fallback.warnings ?? []), `Fixture fallback active: ${e.message}`]; setTrace(fallback); setUsingFixtureFallback(true); }
   });
 
   useEffect(() => { if (!trace) setTrace(createFakeTrace(defaultPrompt)); }, [trace, setTrace]);
