@@ -1,54 +1,58 @@
+import { OrbitControls, Text } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
-import { Suspense, useMemo } from 'react';
-import { AttentionLinks } from './AttentionLinks';
-import { CameraRig } from './CameraRig';
-import { MatrixBlock } from './MatrixBlock';
-import { TokenStrip } from './TokenStrip';
-import type { AttentionOperation, TransformerTrace } from '../transformer-ir/traceTypes';
+import { useMemo } from 'react';
+import type { TransformerTrace } from '../transformer-ir/traceTypes';
+import type { TraceDiagnostics } from '../state/useTraceStore';
+import { buildLayerViewModelsFromTrace, buildOutputLogitViewModelsFromTrace, buildTokenViewModelsFromTrace, getSelectedAttentionHeadFromTrace, getSelectedLayerFromTrace } from './traceViewModels';
 
-interface TransformerSceneProps {
+interface Props {
   trace: TransformerTrace;
-  onTokenSelect?: (tokenIndex: number) => void;
+  diagnostics: TraceDiagnostics;
+  selectedTokenIndex: number;
+  selectedLayerIndex: number;
+  selectedHeadIndex: number;
+  onSelectToken: (i: number) => void;
+  onSelectLayer: (i: number) => void;
+  onSelectHead: (i: number) => void;
 }
 
-function TraceObjects({ trace, onTokenSelect }: TransformerSceneProps) {
-  const firstAttention = useMemo(() => {
-    for (const layer of trace.layers) {
-      const attention = layer.operations.find((operation) => operation.kind === 'attention') as AttentionOperation | undefined;
-      if (attention) return attention;
-    }
-    return undefined;
-  }, [trace.layers]);
+export function TransformerScene({ trace, diagnostics, selectedTokenIndex, selectedLayerIndex, selectedHeadIndex, onSelectToken, onSelectLayer, onSelectHead }: Props) {
+  const tokenVM = useMemo(() => buildTokenViewModelsFromTrace(trace, selectedTokenIndex), [trace, selectedTokenIndex]);
+  const layerVM = useMemo(() => buildLayerViewModelsFromTrace(trace, selectedLayerIndex), [trace, selectedLayerIndex]);
+  const selectedLayer = getSelectedLayerFromTrace(trace, selectedLayerIndex);
+  const selectedHead = getSelectedAttentionHeadFromTrace(trace, selectedLayerIndex, selectedHeadIndex);
+  const logits = buildOutputLogitViewModelsFromTrace(trace);
+  const residual = selectedLayer?.residualStream?.tokenNormsAfterMlp ?? [];
 
-  return (
-    <group>
-      <TokenStrip tokens={trace.tokens} onTokenSelect={onTokenSelect} />
-      {firstAttention ? <AttentionLinks links={firstAttention.topAttentionLinks} tokens={trace.tokens} /> : null}
-      <MatrixBlock label="Embedding" color="#2563eb" position={[-2.8, 0.4, 0]} />
-      {trace.layers.map((layer, index) => (
-        <group key={layer.layerIndex} position={[index * 1.6 - 0.8, 0.4, 0]}>
-          <MatrixBlock label={`L${layer.layerIndex}`} color="#7c3aed" position={[0, 0, 0]} blockScale={[1, 0.75, 0.9]} />
-          <MatrixBlock label="Attn" color="#0891b2" position={[0, 0.85, -0.2]} blockScale={[0.8, 0.28, 0.55]} />
-          <MatrixBlock label="MLP" color="#db2777" position={[0, -0.85, -0.2]} blockScale={[0.8, 0.28, 0.55]} />
-        </group>
-      ))}
-      <MatrixBlock label="Logits" color="#16a34a" position={[trace.layers.length * 1.6 + 0.2, 0.4, 0]} />
-    </group>
-  );
-}
+  const missingReasons = [
+    !diagnostics.hasAttentionWeights ? 'Backend did not return attention tensors.' : null,
+    !diagnostics.hasResidualSummary ? 'Backend did not return hidden-state summaries.' : null,
+    !diagnostics.hasOutputTopK ? 'Backend did not return top-k logits.' : null,
+  ].filter(Boolean) as string[];
 
-export function TransformerScene(props: TransformerSceneProps) {
-  return (
-    <div className="scene-shell" data-testid="scene-shell">
-      <Canvas camera={{ position: [0, 2.4, 6.4], fov: 48 }} dpr={[1, 1.5]} gl={{ antialias: true, powerPreference: 'high-performance' }}>
-        <color attach="background" args={["#020617"]} />
-        <ambientLight intensity={0.65} />
-        <directionalLight position={[3, 4, 5]} intensity={1.2} />
-        <Suspense fallback={null}>
-          <TraceObjects {...props} />
-        </Suspense>
-        <CameraRig />
-      </Canvas>
-    </div>
-  );
+  return <div className='scene-shell'><Canvas camera={{ position: [0, 4, 13], fov: 45 }}>
+    <ambientLight intensity={0.9} />
+    <pointLight position={[4, 8, 8]} intensity={15} />
+    <group position={[-5, 0, 0]}>{tokenVM.map((t, idx) => <group key={t.index} position={[idx * 1.1, 1.6, 0]}><mesh onClick={() => onSelectToken(t.index)}><boxGeometry args={[0.9, 0.4, 0.3]} /><meshStandardMaterial color={t.selected ? '#f59e0b' : '#38bdf8'} /></mesh><Text position={[0, 0, 0.2]} fontSize={0.12}>{t.label.slice(0, 12)}</Text></group>)}</group>
+    <group position={[-1.5, -0.3, 0]}><mesh><boxGeometry args={[2, 1.2, 0.6]} /><meshStandardMaterial color='#2563eb' /></mesh><Text position={[0, 0.9, 0]} fontSize={0.16}>Token + Position Embedding</Text></group>
+    <group position={[2.2, 0, 0]}><Text position={[0, 2.2, 0]} fontSize={0.25}>Layer Stack (sampled layers)</Text>{layerVM.map((l, i) => <group key={l.layerIndex} position={[0, 1.6 - i * 0.8, 0]}><mesh onClick={() => onSelectLayer(l.layerIndex)}><boxGeometry args={[2, 0.55, 0.7]} /><meshStandardMaterial color={l.selected ? '#22c55e' : '#7c3aed'} /></mesh><Text position={[0, 0, 0.4]} fontSize={0.14}>{l.label}</Text></group>)}</group>
+    <group position={[6.2, 1.2, 0]}><Text position={[0, 1.8, 0]} fontSize={0.2}>Attention Head {selectedHead?.headIndex ?? 'N/A'}</Text>{selectedHead ? selectedHead.weights.slice(0, 12).map((row, r) => row.slice(0, 12).map((v, c) => <mesh key={`${r}-${c}`} position={[c * 0.22, -r * 0.22, 0]}><boxGeometry args={[0.19,0.19,0.12]} /><meshStandardMaterial emissive='#111827' color={`hsl(${220 - Math.min(1, v) * 220} 85% 55%)`} /></mesh>)) : <Text position={[0, 0, 0]} fontSize={0.15}>Attention unavailable in this trace.</Text>}</group>
+    <group position={[6.2, -1.9, 0]}>{(selectedLayer?.attention?.heads ?? []).map((h, i) => <mesh key={h.headIndex} position={[i * 0.5, 0, 0]} onClick={() => onSelectHead(h.headIndex)}><boxGeometry args={[0.38, 0.38, 0.2]} /><meshStandardMaterial color={h.headIndex === (selectedHead?.headIndex ?? -1) ? '#f97316' : '#334155'} /></mesh>)}</group>
+    <group position={[9.2, -0.3, 0]}><Text position={[0, 1.7, 0]} fontSize={0.18}>Residual / Hidden Summary</Text>{residual.length ? residual.slice(0, 12).map((v, i) => <mesh key={i} position={[i * 0.22, Math.min(2, v) * 0.25, 0]}><boxGeometry args={[0.14, Math.max(0.05, Math.min(2, v) * 0.5), 0.12]} /><meshStandardMaterial color='#14b8a6' emissive='#042f2e' /></mesh>) : <Text position={[0, 0.5, 0]} fontSize={0.14}>Residual summary not exposed by this trace.</Text>}</group>
+    <group position={[12.5, -0.5, 0]}><Text position={[0, 2, 0]} fontSize={0.2}>Output Top-K</Text>{logits.length ? logits.slice(0, 8).map((l, i) => <group key={`${l.rank}-${l.tokenId}`} position={[0, 1.5 - i * 0.35, 0]}><mesh position={[Math.min(2, l.probability * 4), 0, 0]}><boxGeometry args={[Math.max(0.05, l.probability * 4), 0.22, 0.1]} /><meshStandardMaterial color='#22c55e' /></mesh><Text position={[-0.2, 0, 0.1]} fontSize={0.1} anchorX='right'>{`${l.rank}. ${l.text} ${(l.pct).toFixed(1)}%`}</Text></group>) : <Text position={[0, 1, 0]} fontSize={0.14}>Output logits/top-k not exposed by this trace.</Text>}</group>
+    <OrbitControls enablePan enableZoom />
+  </Canvas>
+  <div className='scene-hud'>
+    <div><strong>Trace source:</strong> {diagnostics.sourceStatus}</div>
+    <div><strong>Trace ID:</strong> {diagnostics.traceId ?? 'n/a'}</div>
+    <div><strong>Model:</strong> {diagnostics.modelName ?? trace.model.name}</div>
+    <div><strong>Prompt:</strong> {trace.input.prompt}</div>
+    <div><strong>Tokens/Layers:</strong> {diagnostics.tokenCount}/{diagnostics.normalizedLayerCount}</div>
+    <div><strong>Selected token/layer/head:</strong> {selectedTokenIndex}/{selectedLayer?.layerIndex ?? 'n/a'}/{selectedHead?.headIndex ?? 'n/a'}</div>
+    <div><strong>Availability:</strong> attention {diagnostics.hasAttentionWeights ? 'yes' : 'no'} · residual {diagnostics.hasResidualSummary ? 'yes' : 'no'} · top-k {diagnostics.hasOutputTopK ? 'yes' : 'no'} · raw Q/K/V {diagnostics.hasRawQkv ? 'yes' : 'unavailable'}</div>
+    {diagnostics.lastError ? <div>❌ {diagnostics.lastError}</div> : null}
+    {missingReasons.map((reason, i) => <div key={`missing-${i}`}>ℹ {reason}</div>)}
+    {diagnostics.warnings.map((w, i) => <div key={i}>⚠ {w}</div>)}
+  </div>
+  </div>;
 }

@@ -1,0 +1,26 @@
+{
+  "raw_keys": [
+    "schemaVersion",
+    "traceId",
+    "model",
+    "input",
+    "embedding",
+    "layers",
+    "output",
+    "limits",
+    "warnings"
+  ],
+  "token_count": 5,
+  "layer_count": 6,
+  "heads_per_layer": [
+    16,
+    16,
+    16,
+    16,
+    16,
+    16
+  ],
+  "has_attention": true,
+  "has_residual": true,
+  "has_topk": true
+}
