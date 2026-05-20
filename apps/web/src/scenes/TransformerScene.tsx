@@ -24,6 +24,12 @@ export function TransformerScene({ trace, diagnostics, selectedTokenIndex, selec
   const logits = buildOutputLogitViewModelsFromTrace(trace);
   const residual = selectedLayer?.residualStream?.tokenNormsAfterMlp ?? [];
 
+  const missingReasons = [
+    !diagnostics.hasAttentionWeights ? 'Backend did not return attention tensors.' : null,
+    !diagnostics.hasResidualSummary ? 'Backend did not return hidden-state summaries.' : null,
+    !diagnostics.hasOutputTopK ? 'Backend did not return top-k logits.' : null,
+  ].filter(Boolean) as string[];
+
   return <div className='scene-shell'><Canvas camera={{ position: [0, 4, 13], fov: 45 }}>
     <ambientLight intensity={0.9} />
     <pointLight position={[4, 8, 8]} intensity={15} />
@@ -45,6 +51,7 @@ export function TransformerScene({ trace, diagnostics, selectedTokenIndex, selec
     <div><strong>Selected token/layer/head:</strong> {selectedTokenIndex}/{selectedLayer?.layerIndex ?? 'n/a'}/{selectedHead?.headIndex ?? 'n/a'}</div>
     <div><strong>Availability:</strong> attention {diagnostics.hasAttentionWeights ? 'yes' : 'no'} · residual {diagnostics.hasResidualSummary ? 'yes' : 'no'} · top-k {diagnostics.hasOutputTopK ? 'yes' : 'no'} · raw Q/K/V {diagnostics.hasRawQkv ? 'yes' : 'unavailable'}</div>
     {diagnostics.lastError ? <div>❌ {diagnostics.lastError}</div> : null}
+    {missingReasons.map((reason, i) => <div key={`missing-${i}`}>ℹ {reason}</div>)}
     {diagnostics.warnings.map((w, i) => <div key={i}>⚠ {w}</div>)}
   </div>
   </div>;
