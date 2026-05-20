@@ -5,8 +5,10 @@ export interface TransformerTrace {
     architecture: string;
     numLayers: number;
     numHeads: number;
+    keyValueHeads?: number;
     hiddenSize: number;
     vocabSize: number;
+    sampledLayerIndices?: number[];
   };
   input: {
     prompt: string;
@@ -23,6 +25,8 @@ export interface TransformerTrace {
       tokenNormsBefore: number[];
       tokenNormsAfterAttention: number[];
       tokenNormsAfterMlp: number[];
+      tokenMeanAfterMlp?: number[];
+      tokenMaxAbsAfterMlp?: number[];
     };
     attention: {
       heads: Array<{

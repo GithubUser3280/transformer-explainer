@@ -30,3 +30,12 @@ describe('trace status and availability', () => {
     expect(availability.hasOutputTopK).toBe(false);
   });
 });
+
+
+it('availability flags become true for enriched trace', () => {
+  const trace = createFakeTrace('x y z');
+  const availability = getDataAvailability(trace);
+  expect(availability.hasAttentionWeights).toBe(true);
+  expect(availability.hasResidualSummary).toBe(true);
+  expect(availability.hasOutputTopK).toBe(true);
+});

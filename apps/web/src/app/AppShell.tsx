@@ -25,7 +25,7 @@ export function AppShell() {
     },
     onMutate: () => { setTraceSourceStatus('loading'); setTraceError(undefined); },
     onSuccess: (t) => {
-      console.info('Live trace parsed successfully', { model: t.model.name, tokens: t.input.tokens.length, layers: t.layers.length });
+      console.info('Live trace parsed successfully', { source: 'live-success', tokens: t.input.tokens.length, sampledLayers: t.layers.map((l) => l.layerIndex), headsPerLayer: t.layers.map((l) => l.attention.heads.length), hasTopK: t.output.nextTokenTopK.length > 0, hasResidual: t.layers.some((l) => l.residualStream.tokenNormsAfterMlp.length > 0) });
       setTraceSourceStatus('live-success');
       setTrace(t);
     },

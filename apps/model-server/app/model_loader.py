@@ -26,6 +26,7 @@ def load_model(model_id: str) -> tuple[Any, Any]:
         device_map=None,
         low_cpu_mem_usage=True,
         trust_remote_code=True,
+        attn_implementation='eager',
     )
     _model.eval()
     _model.to('cpu')

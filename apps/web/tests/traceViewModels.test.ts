@@ -29,6 +29,17 @@ describe('trace view models', () => {
     expect(head).toBeUndefined();
   });
 
+
+  it('selected head supports multiple heads', () => {
+    const copy = structuredClone(trace);
+    copy.layers[0].attention.heads = [
+      { headIndex: 0, weights: [[1]], queryPreview: null, keyPreview: null, valuePreview: null },
+      { headIndex: 1, weights: [[0.5]], queryPreview: null, keyPreview: null, valuePreview: null }
+    ];
+    const selected = getSelectedAttentionHeadFromTrace(copy, copy.layers[0].layerIndex, 1);
+    expect(selected?.headIndex).toBe(1);
+  });
+
   it('token vm handles whitespace markers', () => {
     const copy = structuredClone(trace);
     copy.input.tokens[0].text = 'ĠThe';
