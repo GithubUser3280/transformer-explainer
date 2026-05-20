@@ -26,3 +26,12 @@ export function getSelectedAttentionHeadFromTrace(trace: TransformerTrace, selec
 export function buildOutputLogitViewModelsFromTrace(trace: TransformerTrace) {
   return trace.output.nextTokenTopK.map((item, index) => ({ ...item, rank: index + 1, pct: item.probability * 100 }));
 }
+
+export function getDataAvailability(trace: TransformerTrace) {
+  const heads = trace.layers.flatMap((l) => l.attention?.heads ?? []);
+  return {
+    hasAttentionWeights: heads.some((h) => h.weights.length > 0),
+    hasResidualSummary: trace.layers.some((l) => l.residualStream.tokenNormsAfterMlp.length > 0),
+    hasOutputTopK: trace.output.nextTokenTopK.length > 0
+  };
+}

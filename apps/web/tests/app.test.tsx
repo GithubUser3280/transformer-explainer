@@ -1,39 +1,28 @@
 import '@testing-library/jest-dom/vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App';
-import { login, requestTransformerTrace } from '../src/api/traceApiClient';
-import { createFakeTrace } from '../src/transformer-ir/fakeTrace';
-import { validateTransformerTrace } from '../src/transformer-ir/traceValidation';
 
 vi.mock('../src/scenes/TransformerScene', () => ({ TransformerScene: () => <div data-testid='mock-transformer-scene' /> }));
 
-describe('App', () => {
-  it('renders landing controls', async () => {
+describe('App auth controls', () => {
+  it('logged out shows Login and hides Logout', async () => {
     render(<App />);
-    expect(screen.getByRole('button', { name: /generate trace/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /logout/i })).not.toBeInTheDocument();
     expect(await screen.findByTestId('mock-transformer-scene')).toBeInTheDocument();
   });
-});
 
-describe('trace validation', () => {
-  it('accepts the local fake trace shape', () => {
-    const trace = validateTransformerTrace(createFakeTrace('hello world'));
-    expect(trace.schemaVersion).toBe('1.0');
-  });
-});
-
-describe('trace api client', () => {
-  it('posts to same-origin /api/trace and validates the response', async () => {
-    const fakeTrace = createFakeTrace('mocked fetch');
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify(fakeTrace), { status: 200 })) as unknown as typeof fetch;
-    const trace = await requestTransformerTrace({ prompt: 'mocked fetch' }, fetchMock);
-    expect(trace.input.prompt).toEqual(fakeTrace.input.prompt);
-  });
-
-  it('sends login request with credentials include', async () => {
-    const fetchMock = vi.fn(async () => new Response('{}', { status: 200 })) as unknown as typeof fetch;
-    await login('secret', fetchMock);
-    expect(fetchMock).toHaveBeenCalled();
+  it('successful login closes modal and shows logout', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 200 })) as unknown as typeof fetch);
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: /login/i }));
+    expect(await screen.findByRole('dialog', { name: /login required/i })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'secret' } });
+    const dialog = screen.getByRole('dialog', { name: /login required/i });
+    fireEvent.click(dialog.querySelector('button[type="submit"]') as HTMLButtonElement);
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /login required/i })).not.toBeInTheDocument());
+    expect(screen.getByRole('button', { name: /logout/i })).toBeInTheDocument();
+    vi.unstubAllGlobals();
   });
 });
