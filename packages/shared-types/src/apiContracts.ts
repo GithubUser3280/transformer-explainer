@@ -2,8 +2,9 @@ import type { TransformerTrace } from './transformerTrace';
 
 export interface TraceRequest {
   prompt: string;
-  maxPromptTokens?: number;
-  selectedLayerIndices?: number[];
+  maxGeneratedTokens?: number;
+  topK?: number;
+  modelName?: string;
 }
 
 export type TraceResponse = TransformerTrace;
