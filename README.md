@@ -1,3 +1,13 @@
+---
+title: Transformer Explainer
+emoji: 🧠
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_file: app.py
+pinned: false
+---
+
 # Transformer Explainer
 
 A scaffold for a performant, browser-based 3D explainer for modern decoder-only LLM internals. The frontend renders abstract transformer architecture objects from a canonical `TransformerTrace` IR. The backend produces one compact trace per prompt, and the browser animates locally from that trace instead of calling the model server for every visualization step.
@@ -32,7 +42,7 @@ Qwen/Qwen3-0.6B is the primary real model target because it is modern enough to 
 
 The frontend is a static Vite/React/Three.js app deployable to Cloudflare Pages. It only knows about same-origin `/api/trace`; it never embeds a Hugging Face Space URL. The model server is dynamic and computes a compact trace once per prompt. The scene consumes only the canonical `TransformerTrace` IR so Qwen, Gemma, Mistral, or later model tracers can be added without rewriting the renderer.
 
-The frontend now includes a password login modal. Fake traces remain available without authentication, while real trace generation requires a successful `/login` call and session cookie.
+The frontend now includes a password login modal. Live trace generation requires a successful `/login` call and session cookie.
 
 ## Local setup
 
