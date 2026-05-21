@@ -10,7 +10,6 @@ describe('App auth controls', () => {
     render(<App />);
     expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /logout/i })).not.toBeInTheDocument();
-    expect(await screen.findByTestId('mock-transformer-scene')).toBeInTheDocument();
   });
 
   it('successful login closes modal and shows logout', async () => {

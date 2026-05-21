@@ -1,11 +1,10 @@
 import { useMutation } from '@tanstack/react-query';
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { AuthRequiredError, login, logout, requestTransformerTrace } from '../api/traceApiClient';
 import type { TraceRequest, TransformerTrace } from '../transformer-ir/traceTypes';
 import { ErrorPanel } from '../components/ErrorPanel';
 import { LoadingPanel } from '../components/LoadingPanel';
 import { useTraceStore } from '../state/useTraceStore';
-import { createFakeTrace } from '../transformer-ir/fakeTrace';
 import { AuthPanel } from '../components/AuthPanel';
 
 const TransformerScene = lazy(() => import('../scenes/TransformerScene').then((module) => ({ default: module.TransformerScene })));
@@ -50,21 +49,11 @@ export function AppShell() {
         setTraceError('Authentication required for live traces.');
         return;
       }
-      const fallback = createFakeTrace(prompt);
-      fallback.warnings = [...(fallback.warnings ?? []), `Fixture fallback active: ${e.message}`];
-      setTraceSourceStatus('fallback-after-failure');
+      setTraceSourceStatus('failed');
       setTraceError(e.message);
-      setTrace(fallback);
       setPipelineDebug({ ...(pipelineDebug ?? { buttonClicks: 0, rawAttention: false, rawTopK: false, rawResidual: false, normalizedAttention: false, normalizedTopK: false, normalizedResidual: false, fallbackUsed: true, authLoggedIn: false }), fallbackUsed: true, authLoggedIn: isAuthenticated });
     }
   });
-
-  useEffect(() => {
-    if (!trace) {
-      setTraceSourceStatus('fixture-success');
-      setTrace(createFakeTrace(defaultPrompt));
-    }
-  }, [trace, setTrace, setTraceSourceStatus]);
 
   return <main className='app-shell'>
     <div className='visual-panel'>{trace ? <Suspense fallback={<div className='empty-scene'>Loading 3D renderer…</div>}><TransformerScene trace={trace} diagnostics={traceDiagnostics} selectedTokenIndex={selectedTokenIndex} selectedLayerIndex={selectedLayerIndex} selectedHeadIndex={selectedHeadIndex} onSelectToken={setSelectedTokenIndex} onSelectLayer={setSelectedLayerIndex} onSelectHead={setSelectedHeadIndex} /></Suspense> : null}</div>
@@ -72,11 +61,10 @@ export function AppShell() {
       <label htmlFor='prompt'>Prompt</label><textarea id='prompt' value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={4} />
       <div className='button-row'>
         <button onClick={() => traceMutation.mutate({ prompt, maxGeneratedTokens: 1, topK: 10 })} disabled={!isAuthenticated || traceMutation.isPending}>Generate trace</button>
-        <button className='secondary' onClick={() => { setTraceSourceStatus('fixture-success'); setTrace(createFakeTrace(prompt)); }}>Use fixture trace</button>
         {!isAuthenticated ? <button className='secondary' onClick={() => setShowAuthPanel(true)}>Login</button> : null}
         {isAuthenticated ? <button className='secondary' onClick={() => logout().then(() => setIsAuthenticated(false))}>Logout</button> : null}
       </div>
-      {!isAuthenticated ? <p className='hint'>Live API trace requires login. Fixture mode remains available.</p> : null}
+      {!isAuthenticated ? <p className='hint'>Live API trace requires login.</p> : null}
       {traceMutation.isPending ? <LoadingPanel /> : null}
       {traceDiagnostics.lastError ? <ErrorPanel message={traceDiagnostics.lastError} /> : null}
       {process.env.NODE_ENV !== 'production' ? <details><summary>Trace Pipeline Debug</summary><pre>{JSON.stringify({ traceStatus: traceDiagnostics.sourceStatus, ...pipelineDebug, storeTopK: trace?.output.nextTokenTopK.length ?? 0, storeHeads: trace?.layers[0]?.attention.heads.length ?? 0 }, null, 2)}</pre></details> : null}

@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', extra='ignore')
 
     model_id: str = 'Qwen/Qwen3-0.6B'
-    use_fake_trace: bool = True
+    use_fake_trace: bool = False
     preload_model: bool = False
     max_prompt_tokens: int = 48
     max_selected_layers: int = 6
