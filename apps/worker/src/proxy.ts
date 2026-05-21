@@ -6,10 +6,14 @@ export async function proxyApiRequest(request: Request, env: WorkerEnv): Promise
   const headers = new Headers(request.headers);
   headers.set('X-Backend-Shared-Secret', env.BACKEND_SHARED_SECRET);
   headers.delete('cookie');
-  return fetch(backendUrl.toString(), {
+  const backendResponse = await fetch(backendUrl.toString(), {
     method: request.method,
     headers,
     body: request.body,
     redirect: 'manual'
   });
+  const passthrough = new Response(backendResponse.body, backendResponse);
+  passthrough.headers.set('x-trace-backend-url', backendUrl.origin);
+  passthrough.headers.set('x-trace-backend-status', String(backendResponse.status));
+  return passthrough;
 }
