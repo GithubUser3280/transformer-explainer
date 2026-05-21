@@ -15,7 +15,8 @@
     "build": "pnpm --filter @transformer-3d-explainer/shared-types build && pnpm build:web",
     "build:web": "pnpm --filter @transformer-3d-explainer/web build",
     "deploy:web:fallback": "wrangler pages deploy apps/web/dist --project-name transformer-explainer",
-    "deploy:worker": "pnpm --filter @transformer-3d-explainer/worker deploy"
+    "deploy:worker": "pnpm --filter @transformer-3d-explainer/worker deploy",
+    "build:static-artifact": "pnpm build:web && node scripts/build-static-artifact.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
