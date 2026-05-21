@@ -1,8 +1,54 @@
 import type { TraceRequest, TransformerTrace } from '@transformer-3d-explainer/shared-types';
 import { validateTransformerTrace } from '../transformer-ir/traceValidation';
 
+export type StaticSecretsConfig = {
+  apiBaseUrl: string;
+  backendSharedSecret?: string;
+  accessPassword?: string;
+};
+
+const STATIC_SECRETS_STORAGE_KEY = 'transformer-explainer-static-secrets';
+
+function getStaticSecretsConfig(): StaticSecretsConfig | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(STATIC_SECRETS_STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as StaticSecretsConfig;
+    if (!parsed.apiBaseUrl?.trim()) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function saveStaticSecretsConfig(config: StaticSecretsConfig) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.setItem(STATIC_SECRETS_STORAGE_KEY, JSON.stringify(config));
+}
+
 export class AuthRequiredError extends Error {}
-export async function login(password: string, fetchImpl: typeof fetch = fetch) { const r = await fetchImpl('/login', { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'include', body: JSON.stringify({ password }) }); if (!r.ok) throw new Error('Login failed'); return { ok: true as const }; }
+export async function login(password: string, fetchImpl: typeof fetch = fetch) {
+  const staticConfig = getStaticSecretsConfig();
+  if (staticConfig) {
+    saveStaticSecretsConfig({ ...staticConfig, accessPassword: password });
+    return { ok: true as const };
+  }
+
+  const r = await fetchImpl('/login', { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'include', body: JSON.stringify({ password }) });
+  if (!r.ok) throw new Error('Login failed'); return { ok: true as const };
+}
 export async function logout(fetchImpl: typeof fetch = fetch) { await fetchImpl('/logout', { method: 'POST', credentials: 'include' }); }
 
 function hasResidualSummaries(trace: TransformerTrace): boolean {
@@ -14,8 +60,17 @@ function hasAttention(trace: TransformerTrace): boolean {
 }
 
 export async function requestTransformerTrace(request: TraceRequest, fetchImpl: typeof fetch = fetch): Promise<TransformerTrace> {
-  const apiUrl = '/api/trace';
-  const response = await fetchImpl(apiUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'include', body: JSON.stringify(request) });
+  const staticConfig = getStaticSecretsConfig();
+  const apiUrl = staticConfig ? `${staticConfig.apiBaseUrl.replace(/\/$/, '')}/api/trace` : '/api/trace';
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  if (staticConfig?.backendSharedSecret) {
+    headers['X-Backend-Shared-Secret'] = staticConfig.backendSharedSecret;
+  }
+  if (staticConfig?.accessPassword) {
+    headers['X-Access-Password'] = staticConfig.accessPassword;
+  }
+
+  const response = await fetchImpl(apiUrl, { method: 'POST', headers, credentials: staticConfig ? 'omit' : 'include', body: JSON.stringify(request) });
   if (response.status === 401) throw new AuthRequiredError();
   if (!response.ok) throw new Error(`Trace request failed with status ${response.status}`);
   const raw = await response.json();

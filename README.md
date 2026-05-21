@@ -48,6 +48,25 @@ Run the web app with local fake traces available in the UI:
 pnpm dev:web
 ```
 
+## Build a downloadable static HTML artifact
+
+You can produce a single-file static artifact (no cloud services required) that can be uploaded to any static host:
+
+```bash
+pnpm build:static-artifact
+```
+
+This writes:
+
+- `artifacts/static-html/index.html` (fully inlined HTML/CSS/JS)
+- `artifacts/static-html/secrets.template.json` (import into the app with **Import secrets**)
+
+The imported JSON supports:
+
+- `apiBaseUrl`: backend origin (for example `http://localhost:7860`)
+- `backendSharedSecret`: optional value sent as `X-Backend-Shared-Secret`
+- `accessPassword`: optional convenience value for environments that expect a password header
+
 Run the backend in fake trace mode:
 
 ```bash

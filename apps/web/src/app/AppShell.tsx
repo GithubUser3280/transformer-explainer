@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { AuthRequiredError, login, logout, requestTransformerTrace } from '../api/traceApiClient';
+import { AuthRequiredError, login, logout, requestTransformerTrace, saveStaticSecretsConfig } from '../api/traceApiClient';
 import type { TraceRequest, TransformerTrace } from '../transformer-ir/traceTypes';
 import { ErrorPanel } from '../components/ErrorPanel';
 import { LoadingPanel } from '../components/LoadingPanel';
@@ -55,6 +55,15 @@ export function AppShell() {
 
   const canGenerateLiveTrace = isAuthenticated;
 
+  async function importSecretsFile(file: File) {
+    const content = await file.text();
+    const parsed = JSON.parse(content) as { apiBaseUrl: string; backendSharedSecret?: string; accessPassword?: string };
+    saveStaticSecretsConfig(parsed);
+    setIsAuthenticated(Boolean(parsed.accessPassword));
+    setShowAuthPanel(false);
+    setAuthError(null);
+  }
+
   return <main className='app-shell'>
     <div className='visual-panel'>{trace ? <Suspense fallback={<div className='empty-scene'>Loading 3D renderer…</div>}><TransformerScene trace={trace} diagnostics={traceDiagnostics} selectedTokenIndex={selectedTokenIndex} selectedLayerIndex={selectedLayerIndex} selectedHeadIndex={selectedHeadIndex} onSelectToken={setSelectedTokenIndex} onSelectLayer={setSelectedLayerIndex} onSelectHead={setSelectedHeadIndex} /></Suspense> : null}</div>
     <section className='controls-panel overlay-panel'>
@@ -63,9 +72,18 @@ export function AppShell() {
         <button onClick={() => traceMutation.mutate({ prompt, maxGeneratedTokens: 1, topK: 10 })} disabled={!canGenerateLiveTrace || traceMutation.isPending}>Generate trace</button>
         <button className='secondary' onClick={() => { setTraceSourceStatus('fixture-success'); setTrace(createFakeTrace(prompt)); }}>Use fixture trace</button>
         {!isAuthenticated ? <button className='secondary' onClick={() => setShowAuthPanel(true)}>Login</button> : null}
+        <label className='secondary button-file'>Import secrets
+          <input type='file' accept='application/json' onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (!file) {
+              return;
+            }
+            void importSecretsFile(file).catch((error: Error) => setAuthError(error.message));
+          }} />
+        </label>
         {isAuthenticated ? <button className='secondary' onClick={() => logout().then(() => setIsAuthenticated(false))}>Logout</button> : null}
       </div>
-      {!isAuthenticated ? <p className='hint'>Live API trace requires login. Fixture mode remains available.</p> : null}
+      {!isAuthenticated ? <p className='hint'>Live API trace requires login. For static HTML, import a JSON file with <code>apiBaseUrl</code> and optional secrets.</p> : null}
       {traceMutation.isPending ? <LoadingPanel /> : null}
       {traceDiagnostics.lastError ? <ErrorPanel message={traceDiagnostics.lastError} /> : null}
       {traceDiagnostics.sourceStatus === 'fallback-after-failure' ? <p className='warning'>Fixture fallback active after live failure.</p> : null}
