@@ -32,7 +32,6 @@ describe('trace status and availability', () => {
   });
 });
 
-
 it('availability flags become true for enriched trace', () => {
   const trace = validateTransformerTrace(fixture);
   trace.layers[0].residualStream.tokenNormsAfterMlp = [0.1, 0.2, 0.3];

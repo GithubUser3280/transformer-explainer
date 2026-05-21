@@ -37,8 +37,7 @@ interface TraceState {
     fallbackUsed: boolean;
     authLoggedIn: boolean;
   };
-  setPipelineDebug: (value: TraceState["pipelineDebug"]) => void;
-
+  setPipelineDebug: (value: TraceState['pipelineDebug']) => void;
   setTrace: (trace: TransformerTrace) => void;
   setTraceSourceStatus: (status: TraceSourceStatus) => void;
   setTraceError: (error?: string) => void;
@@ -49,7 +48,6 @@ interface TraceState {
   selectPreviousLayer: () => void;
   selectNextHead: () => void;
   selectPreviousHead: () => void;
-
 }
 
 const defaultDiagnostics: TraceDiagnostics = {
